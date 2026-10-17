@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- Paystack Inline SDK -->
   <script src="https://js.paystack.co/v1/inline.js"></script>
+  <!-- Supabase Cloud Database SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- React & ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -22,10 +24,7 @@
       background-color: #090A0F;
       color: #F8FAFC;
     }
-    .font-mono {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    /* Custom subtle scrollbars */
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #090A0F; }
     ::-webkit-scrollbar-thumb { background: #262936; border-radius: 9999px; }
@@ -36,17 +35,23 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     // ============================================================================
-    // YOUR LIVE CREDENTIALS (HARD-CODED & PRE-ACTIVATED)
+    // 1. PASTE YOUR SUPABASE URL & ANON KEY HERE SO ALL DEVICES SYNC AUTOMATICALLY
+    // ============================================================================
+    const DEFAULT_SUPABASE_URL = ""; // e.g. "https://xyzcompany.supabase.co"
+    const DEFAULT_SUPABASE_ANON_KEY = ""; // e.g. "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    // ============================================================================
+    // 2. YOUR LIVE PAYSTACK & GOOGLE MAIL CREDENTIALS (PRE-INTEGRATED)
     // ============================================================================
     const LIVE_PAYSTACK_PUBLIC_KEY = "pk_live_aac833e6e6cf5158a8449fdc80f7367b892fa2ab";
     const LIVE_GOOGLE_MAIL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjj-s-vyHVtgNO8Fwd7-t2ii1SQPJfGkgqjcHp3QQiPCZA98kcpUpgmm98iMMTB20l/exec";
     const DEFAULT_ADMIN_PASSWORD = "Princeh1";
 
     // ============================================================================
-    // DEFAULT STATE
+    // INITIAL DEFAULT DATABASE STATE
     // ============================================================================
     const INITIAL_SETTINGS = {
       brandName: "PH AI Sub",
@@ -60,7 +65,6 @@
       footerText: "© 2026 PH AI Sub. Automated Digital Subscription Dispenser. All rights reserved.",
       paystackPublicKey: LIVE_PAYSTACK_PUBLIC_KEY,
       googleMailScriptUrl: LIVE_GOOGLE_MAIL_SCRIPT_URL,
-      allowDemoCheckout: true,
       adminPassword: DEFAULT_ADMIN_PASSWORD,
       whatsappUrl: "https://wa.me/2348000000000",
       telegramUrl: "https://t.me/phaisub",
@@ -112,9 +116,16 @@
     };
 
     function App() {
+      // Supabase Credentials State (Reads from code constants OR /phadmin input)
+      const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("ph_sb_url") || DEFAULT_SUPABASE_URL);
+      const [supabaseKey, setSupabaseKey] = useState(() => localStorage.getItem("ph_sb_key") || DEFAULT_SUPABASE_ANON_KEY);
+      const [cloudStatus, setCloudStatus] = useState("Local Mode (Add Supabase URL & Key to sync across all devices)");
+      const [isCloudConnected, setIsCloudConnected] = useState(false);
+
+      // Core Application State
       const [settings, setSettings] = useState(() => {
         try {
-          const saved = localStorage.getItem("ph_ai_sub_settings_v5");
+          const saved = localStorage.getItem("ph_ai_sub_settings_v6");
           if (saved) {
             const parsed = JSON.parse(saved);
             return {
@@ -130,39 +141,133 @@
 
       const [products, setProducts] = useState(() => {
         try {
-          const saved = localStorage.getItem("ph_ai_sub_products_v5");
+          const saved = localStorage.getItem("ph_ai_sub_products_v6");
           return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
         } catch { return INITIAL_PRODUCTS; }
       });
 
       const [links, setLinks] = useState(() => {
         try {
-          const saved = localStorage.getItem("ph_ai_sub_links_v5");
+          const saved = localStorage.getItem("ph_ai_sub_links_v6");
           return saved ? JSON.parse(saved) : INITIAL_LINKS;
         } catch { return INITIAL_LINKS; }
       });
 
       const [orders, setOrders] = useState(() => {
         try {
-          const saved = localStorage.getItem("ph_ai_sub_orders_v5");
+          const saved = localStorage.getItem("ph_ai_sub_orders_v6");
           return saved ? JSON.parse(saved) : [];
         } catch { return []; }
       });
 
       const [faqs, setFaqs] = useState(() => {
         try {
-          const saved = localStorage.getItem("ph_ai_sub_faqs_v5");
+          const saved = localStorage.getItem("ph_ai_sub_faqs_v6");
           return saved ? JSON.parse(saved) : INITIAL_FAQS;
         } catch { return INITIAL_FAQS; }
       });
 
-      useEffect(() => { localStorage.setItem("ph_ai_sub_settings_v5", JSON.stringify(settings)); }, [settings]);
-      useEffect(() => { localStorage.setItem("ph_ai_sub_products_v5", JSON.stringify(products)); }, [products]);
-      useEffect(() => { localStorage.setItem("ph_ai_sub_links_v5", JSON.stringify(links)); }, [links]);
-      useEffect(() => { localStorage.setItem("ph_ai_sub_orders_v5", JSON.stringify(orders)); }, [orders]);
-      useEffect(() => { localStorage.setItem("ph_ai_sub_faqs_v5", JSON.stringify(faqs)); }, [faqs]);
+      // Keep local backup
+      useEffect(() => { localStorage.setItem("ph_ai_sub_settings_v6", JSON.stringify(settings)); }, [settings]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_products_v6", JSON.stringify(products)); }, [products]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_links_v6", JSON.stringify(links)); }, [links]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_orders_v6", JSON.stringify(orders)); }, [orders]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_faqs_v6", JSON.stringify(faqs)); }, [faqs]);
 
-      const [currentRoute, setCurrentRoute] = useState("home");
+      // ============================================================================
+      // SUPABASE REAL-TIME CLOUD ENGINE (PULL + PUSH ACROSS ALL DEVICES)
+      // ============================================================================
+      const supabaseClient = useMemo(() => {
+        const cleanUrl = (supabaseUrl || "").trim();
+        const cleanKey = (supabaseKey || "").trim();
+        if (cleanUrl.startsWith("https://") && cleanKey.length > 20 && window.supabase) {
+          try {
+            return window.supabase.createClient(cleanUrl, cleanKey);
+          } catch (err) {
+            console.error("Supabase init error:", err);
+          }
+        }
+        return null;
+      }, [supabaseUrl, supabaseKey]);
+
+      // Push complete store state to Supabase Cloud
+      const pushStateToCloud = async (overrideData = {}) => {
+        if (!supabaseClient) return false;
+        const payloadToSave = {
+          settings: overrideData.settings || settings,
+          products: overrideData.products || products,
+          links: overrideData.links || links,
+          orders: overrideData.orders || orders,
+          faqs: overrideData.faqs || faqs,
+          lastSyncedAt: new Date().toISOString()
+        };
+
+        try {
+          const { error } = await supabaseClient
+            .from("ph_ai_sub_cloud")
+            .upsert({ id: "global_store", payload: payloadToSave, updated_at: new Date().toISOString() });
+
+          if (error) {
+            setCloudStatus(`❌ Cloud Error: ${error.message}`);
+            setIsCloudConnected(false);
+            return false;
+          }
+          setCloudStatus(`🟢 Cloud Synced Live (${new Date().toLocaleTimeString()})`);
+          setIsCloudConnected(true);
+          return true;
+        } catch (err) {
+          setCloudStatus(`❌ Sync Failed: ${err.message}`);
+          return false;
+        }
+      };
+
+      // Pull latest store state from Supabase Cloud on page load & every 8 seconds
+      const pullStateFromCloud = async (isInitialLoad = false) => {
+        if (!supabaseClient) return;
+        try {
+          const { data, error } = await supabaseClient
+            .from("ph_ai_sub_cloud")
+            .select("*")
+            .eq("id", "global_store")
+            .maybeSingle();
+
+          if (error) {
+            setCloudStatus(`❌ Supabase Table Error: Run the SQL setup in Supabase first (${error.message})`);
+            setIsCloudConnected(false);
+            return;
+          }
+
+          if (data && data.payload) {
+            const cloud = data.payload;
+            if (cloud.settings) setSettings((prev) => ({ ...prev, ...cloud.settings }));
+            if (cloud.products) setProducts(cloud.products);
+            if (cloud.links) setLinks(cloud.links);
+            if (cloud.orders) setOrders(cloud.orders);
+            if (cloud.faqs) setFaqs(cloud.faqs);
+            setIsCloudConnected(true);
+            setCloudStatus(`🟢 Live Supabase Cloud Connected (${new Date().toLocaleTimeString()})`);
+          } else if (isInitialLoad) {
+            // First time connecting: seed the cloud database with current state
+            await pushStateToCloud();
+          }
+        } catch (err) {
+          setCloudStatus(`❌ Connection Error: ${err.message}`);
+        }
+      };
+
+      useEffect(() => {
+        if (!supabaseClient) return;
+        pullStateFromCloud(true);
+        const interval = setInterval(() => pullStateFromCloud(false), 8000);
+        return () => clearInterval(interval);
+      }, [supabaseClient]);
+
+      // UI States
+      const [currentRoute, setCurrentRoute] = useState(() => {
+        const p = window.location.pathname.toLowerCase();
+        const h = window.location.hash.toLowerCase();
+        return p.includes("/phadmin") || h.includes("phadmin") ? "phadmin" : "home";
+      });
       const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
       const [adminPasswordInput, setAdminPasswordInput] = useState("");
       const [adminActiveTab, setAdminActiveTab] = useState("vault");
@@ -180,8 +285,6 @@
       const [completedOrder, setCompletedOrder] = useState(null);
       const [showSupportModal, setShowSupportModal] = useState(false);
       const [showLookupModal, setShowLookupModal] = useState(false);
-      const [showUrlModal, setShowUrlModal] = useState(false);
-      const [urlInput, setUrlInput] = useState("phaisub.com/phadmin");
 
       const [lookupEmail, setLookupEmail] = useState("");
       const [lookupRef, setLookupRef] = useState("");
@@ -324,12 +427,30 @@
       };
 
       // ============================================================================
-      // FIFO LINK DISPENSER & PAYSTACK CHECKOUT
+      // CLOUD-ATOMIC FIFO LINK DISPENSER & PAYSTACK CHECKOUT
       // ============================================================================
       const executeFifoLinkDispense = async (paymentReference) => {
         if (!selectedProduct) return;
         const qty = parsedQuantity;
-        const availableForProduct = links.filter(
+
+        // Pull fresh links from Supabase Cloud first to prevent race conditions
+        let latestLinks = links;
+        let latestOrders = orders;
+        if (supabaseClient) {
+          try {
+            const { data } = await supabaseClient
+              .from("ph_ai_sub_cloud")
+              .select("*")
+              .eq("id", "global_store")
+              .maybeSingle();
+            if (data && data.payload && data.payload.links) {
+              latestLinks = data.payload.links;
+              latestOrders = data.payload.orders || orders;
+            }
+          } catch (e) {}
+        }
+
+        const availableForProduct = latestLinks.filter(
           (l) => l.productId === selectedProduct.id && l.status === "available"
         );
 
@@ -343,7 +464,7 @@
         const pickedIds = new Set(pickedLinks.map((l) => l.id));
         const soldTimestamp = new Date().toISOString();
 
-        const updatedLinks = links.map((l) =>
+        const updatedLinks = latestLinks.map((l) =>
           pickedIds.has(l.id)
             ? { ...l, status: "sold", buyerEmail: buyerEmail.trim(), orderRef: paymentReference, soldAt: soldTimestamp }
             : l
@@ -362,12 +483,18 @@
           createdAt: soldTimestamp
         };
 
+        const updatedOrders = [newOrder, ...latestOrders];
+
         setLinks(updatedLinks);
-        setOrders((prev) => [newOrder, ...prev]);
+        setOrders(updatedOrders);
         setCompletedOrder(newOrder);
         setSelectedProduct(null);
         setIsProcessingPayment(false);
 
+        // Immediately sync sold status & order to Supabase Cloud for all devices
+        await pushStateToCloud({ links: updatedLinks, orders: updatedOrders });
+
+        // Immediately email the activation links to the customer
         await sendActivationEmailViaGoogle(newOrder);
         showToast(`Payment verified! ${qty} link(s) unlocked & emailed to ${newOrder.buyerEmail}`);
       };
@@ -417,7 +544,7 @@
         }
       };
 
-      const handleBulkAddLinks = (e) => {
+      const handleBulkAddLinks = async (e) => {
         e.preventDefault();
         const rawLines = bulkLinksText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
         if (rawLines.length === 0) {
@@ -441,9 +568,11 @@
             });
           }
         });
-        setLinks((prev) => [...newEntries, ...prev]);
+        const updatedLinks = [...newEntries, ...links];
+        setLinks(updatedLinks);
         setBulkLinksText("");
-        showToast(`Added ${newEntries.length} activation link(s) to vault!`);
+        await pushStateToCloud({ links: updatedLinks });
+        showToast(`Added ${newEntries.length} activation link(s) & synced to Cloud!`);
       };
 
       const handleOrderLookup = (e) => {
@@ -525,15 +654,25 @@
                   <img src={settings.brandLogoUrl} alt="Logo" className="w-9 h-9 rounded-lg object-cover border border-white/15" />
                   <div>
                     <span className="font-bold text-lg">{settings.brandName} • /phadmin</span>
-                    <p className="text-xs text-emerald-400">Live Paystack & Google Mail Active</p>
+                    <p className="text-xs text-emerald-400">{cloudStatus}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      const ok = await pushStateToCloud();
+                      if (ok) showToast("All changes pushed to Supabase Cloud!");
+                      else showToast("Connect Supabase in Tab 4 first to sync to cloud.", "error");
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                  >
+                    ☁️ Sync to Cloud Now
+                  </button>
                   <button onClick={() => setCurrentRoute("home")} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">
-                    ← Back to Live Storefront
+                    ← Storefront
                   </button>
                   <button onClick={() => { setIsAdminAuthenticated(false); setCurrentRoute("home"); }} className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-semibold">
-                    Lock Admin
+                    Lock
                   </button>
                 </div>
               </div>
@@ -554,8 +693,10 @@
                   <p className="text-2xl font-bold mt-1 text-white">{totalSoldLinks}</p>
                 </div>
                 <div className="bg-[#12141D] border border-white/10 rounded-2xl p-5">
-                  <p className="text-xs text-slate-400 uppercase">Paystack Key</p>
-                  <p className="text-xs font-bold mt-2 text-emerald-400">● LIVE MODE CONNECTED</p>
+                  <p className="text-xs text-slate-400 uppercase">Cloud Database</p>
+                  <p className={`text-xs font-bold mt-2 ${isCloudConnected ? "text-emerald-400" : "text-amber-400"}`}>
+                    {isCloudConnected ? "● SUPABASE LIVE SYNC" : "● LOCAL (SETUP IN TAB 4)"}
+                  </p>
                 </div>
               </div>
 
@@ -564,7 +705,7 @@
                   { id: "vault", label: "1. Activation Link Vault" },
                   { id: "products", label: "2. Products & Prices" },
                   { id: "cms", label: "3. Website Text & Logo" },
-                  { id: "integrations", label: "4. Paystack & Google Mail API" },
+                  { id: "integrations", label: "4. Cloud DB, Paystack & Gmail" },
                   { id: "orders", label: `5. Orders (${orders.length})` }
                 ].map((t) => (
                   <button
@@ -601,7 +742,7 @@
                         className="w-full bg-[#090A0F] border border-white/15 rounded-xl p-3 text-xs font-mono text-indigo-300"
                       />
                       <button type="submit" className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm">
-                        + Upload Links to Vault
+                        + Upload Links & Sync to Cloud
                       </button>
                     </form>
                   </div>
@@ -631,7 +772,14 @@
                             <p className="text-xs font-mono text-indigo-300 truncate mt-1">{item.url}</p>
                             {item.buyerEmail && <p className="text-[11px] text-slate-400">Sold to: {item.buyerEmail}</p>}
                           </div>
-                          <button onClick={() => setLinks((prev) => prev.filter((x) => x.id !== item.id))} className="text-xs text-rose-400 px-2 py-1 rounded bg-rose-500/10">
+                          <button
+                            onClick={async () => {
+                              const nextLinks = links.filter((x) => x.id !== item.id);
+                              setLinks(nextLinks);
+                              await pushStateToCloud({ links: nextLinks });
+                            }}
+                            className="text-xs text-rose-400 px-2 py-1 rounded bg-rose-500/10"
+                          >
                             Delete
                           </button>
                         </div>
@@ -643,27 +791,40 @@
 
               {adminActiveTab === "products" && (
                 <div className="space-y-4">
-                  <button
-                    onClick={() => {
-                      setProducts((prev) => [
-                        ...prev,
-                        {
-                          id: "prod_" + Date.now(),
-                          name: "New Subscription Product",
-                          subtitle: "Instant Digital Activation Link",
-                          priceNGN: 10000,
-                          imageUrl: "https://cdn-icons-png.flaticon.com/512/11865/11865326.png",
-                          expiryNotice: "Must be used before 12 Hours else it is deactivated.",
-                          features: ["Instant Automated Delivery", "Valid for 12 Hours"],
-                          active: true
-                        }
-                      ]);
-                      showToast("New product added!");
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-indigo-600 font-bold text-xs"
-                  >
-                    + Add Another Subscription Product
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        const nextProducts = [
+                          ...products,
+                          {
+                            id: "prod_" + Date.now(),
+                            name: "New Subscription Product",
+                            subtitle: "Instant Digital Activation Link",
+                            priceNGN: 10000,
+                            imageUrl: "https://cdn-icons-png.flaticon.com/512/11865/11865326.png",
+                            expiryNotice: "Must be used before 12 Hours else it is deactivated.",
+                            features: ["Instant Automated Delivery", "Valid for 12 Hours"],
+                            active: true
+                          }
+                        ];
+                        setProducts(nextProducts);
+                        await pushStateToCloud({ products: nextProducts });
+                        showToast("New product added & synced!");
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-indigo-600 font-bold text-xs"
+                    >
+                      + Add Another Subscription Product
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await pushStateToCloud({ products });
+                        showToast("Product changes saved to Cloud!");
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 font-bold text-xs"
+                    >
+                      Save Product Edits to Cloud
+                    </button>
+                  </div>
                   {products.map((prod, idx) => (
                     <div key={prod.id} className="bg-[#12141D] border border-white/10 rounded-2xl p-6 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -718,21 +879,81 @@
                     <label className="text-xs text-rose-400 block mb-1">Strict No-Refund Disclaimer</label>
                     <textarea rows="2" value={settings.noRefundDisclaimer} onChange={(e) => setSettings({ ...settings, noRefundDisclaimer: e.target.value })} className="w-full bg-[#090A0F] border border-rose-500/30 rounded-xl p-3 text-sm text-rose-200" />
                   </div>
+                  <button
+                    onClick={async () => {
+                      await pushStateToCloud({ settings });
+                      showToast("Website CMS saved & synced to Cloud!");
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 font-bold text-xs"
+                  >
+                    Save & Sync Website Text to Cloud
+                  </button>
                 </div>
               )}
 
               {adminActiveTab === "integrations" && (
                 <div className="space-y-6">
+                  {/* SUPABASE CLOUD CONNECTION PANEL */}
+                  <div className="bg-[#12141D] border border-cyan-500/40 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-bold text-cyan-300">☁️ 1. Supabase Real-Time Cloud Sync (Cross-Device Database)</h3>
+                      <span className="text-xs font-mono text-emerald-400">{cloudStatus}</span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Paste your free Supabase Project URL and Anon Public Key below (and in Lines 37-38 of index.html) so all uploaded links sync across every customer phone & computer automatically.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-slate-300 block mb-1">Supabase Project URL (`https://...supabase.co`)</label>
+                        <input
+                          value={supabaseUrl}
+                          onChange={(e) => {
+                            setSupabaseUrl(e.target.value);
+                            localStorage.setItem("ph_sb_url", e.target.value);
+                          }}
+                          placeholder="https://yourproject.supabase.co"
+                          className="w-full bg-[#090A0F] border border-cyan-500/40 rounded-xl px-4 py-2.5 text-sm font-mono text-cyan-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-300 block mb-1">Supabase `anon` `public` API Key</label>
+                        <input
+                          value={supabaseKey}
+                          onChange={(e) => {
+                            setSupabaseKey(e.target.value);
+                            localStorage.setItem("ph_sb_key", e.target.value);
+                          }}
+                          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                          className="w-full bg-[#090A0F] border border-cyan-500/40 rounded-xl px-4 py-2.5 text-sm font-mono text-cyan-200"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const ok = await pushStateToCloud();
+                        if (ok) showToast("Connected! Current links & products synced to Supabase Cloud.");
+                        else showToast("Check your Supabase URL, Anon Key, and SQL table setup.", "error");
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs"
+                    >
+                      Test & Sync Current Vault to Supabase Cloud
+                    </button>
+                  </div>
+
+                  {/* PAYSTACK PANEL */}
                   <div className="bg-[#12141D] border border-emerald-500/30 rounded-2xl p-6 space-y-3">
-                    <h3 className="text-base font-bold text-emerald-400">Live Paystack Public Key (Connected)</h3>
+                    <h3 className="text-base font-bold text-emerald-400">💳 2. Live Paystack Public Key (Connected)</h3>
                     <input
                       value={settings.paystackPublicKey}
                       onChange={(e) => setSettings({ ...settings, paystackPublicKey: e.target.value })}
                       className="w-full bg-[#090A0F] border border-emerald-500/40 rounded-xl px-4 py-2.5 text-sm font-mono text-emerald-300"
                     />
                   </div>
+
+                  {/* GOOGLE MAIL PANEL */}
                   <div className="bg-[#12141D] border border-indigo-500/30 rounded-2xl p-6 space-y-4">
-                    <h3 className="text-base font-bold text-indigo-300">Google Mail Web App URL (Connected)</h3>
+                    <h3 className="text-base font-bold text-indigo-300">📧 3. Google Mail Web App URL (Connected)</h3>
                     <input
                       value={settings.googleMailScriptUrl}
                       onChange={(e) => setSettings({ ...settings, googleMailScriptUrl: e.target.value })}
@@ -938,7 +1159,6 @@
                   <button onClick={() => setSelectedProduct(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
                 </div>
 
-                {/* Quantity Selector (Text Editable + Buttons) */}
                 <div className="p-4 rounded-2xl bg-[#090A0F] border border-white/10 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold">Quantity of Activation Links</p>
