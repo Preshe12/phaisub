@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PH AI Sub — Instant Subscription Activation Vault</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Paystack Inline SDK -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel for in-browser JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #090A0F;
+      color: #F8FAFC;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090A0F; }
+    ::-webkit-scrollbar-thumb { background: #262936; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6366F1; }
+  </style>
+</head>
+<body class="bg-[#090A0F] text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // ============================================================================
+    // YOUR LIVE CREDENTIALS (HARD-CODED & PRE-ACTIVATED)
+    // ============================================================================
+    const LIVE_PAYSTACK_PUBLIC_KEY = "pk_live_aac833e6e6cf5158a8449fdc80f7367b892fa2ab";
+    const LIVE_GOOGLE_MAIL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjj-s-vyHVtgNO8Fwd7-t2ii1SQPJfGkgqjcHp3QQiPCZA98kcpUpgmm98iMMTB20l/exec";
+    const DEFAULT_ADMIN_PASSWORD = "Princeh1";
+
+    // ============================================================================
+    // DEFAULT STATE
+    // ============================================================================
+    const INITIAL_SETTINGS = {
+      brandName: "PH AI Sub",
+      brandLogoUrl: "https://cdn-icons-png.flaticon.com/512/11865/11865326.png",
+      heroBadge: "⚡ Instant Automated Activation Link Delivery",
+      heroTitle: "Unlock Premium AI & Cloud Subscriptions Instantly.",
+      heroSubtitle: "Enterprise-grade activation links dispensed automatically the second your payment clears. Zero wait time, 100% verified digital vault.",
+      expirationInstruction: "CRITICAL INSTRUCTION: Every activation link purchased MUST be clicked and activated within 12 Hours of delivery, otherwise the link will automatically expire and deactivate.",
+      noRefundDisclaimer: "STRICT NO-REFUND POLICY: All sales are final. Once payment is completed and your unique activation link(s) have been dispensed by our automated vault, no refunds, reversals, or exchanges can be issued under any circumstances.",
+      activationSteps: "1. Copy your unique activation link below or from your email.\n2. Open the link in your browser while signed into your Google account.\n3. Complete activation immediately (Link expires after 12 hours).",
+      footerText: "© 2026 PH AI Sub. Automated Digital Subscription Dispenser. All rights reserved.",
+      paystackPublicKey: LIVE_PAYSTACK_PUBLIC_KEY,
+      googleMailScriptUrl: LIVE_GOOGLE_MAIL_SCRIPT_URL,
+      allowDemoCheckout: true,
+      adminPassword: DEFAULT_ADMIN_PASSWORD,
+      whatsappUrl: "https://wa.me/2348000000000",
+      telegramUrl: "https://t.me/phaisub",
+      supportEmail: "support@phaisub.com"
+    };
+
+    const INITIAL_PRODUCTS = [
+      {
+        id: "prod_google_pro",
+        name: "Google Pro (Gemini Advanced + 2TB Cloud)",
+        subtitle: "Official 1-Click Activation Link • Instant Delivery",
+        priceNGN: 15000,
+        imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/512px-Google_Gemini_logo.svg.png",
+        expiryNotice: "Instruction: Link must be used before 12 Hours else it is deactivated.",
+        features: [
+          "Full Access to Google Pro / Gemini Advanced Models",
+          "2TB Google One Encrypted Cloud Storage",
+          "Works Directly on Your Personal Google Account",
+          "Instant Automated Link Delivery via Screen & Email",
+          "Valid for 12 Hours Prior to Activation"
+        ],
+        active: true
+      }
+    ];
+
+    const INITIAL_LINKS = [
+      { id: "lnk_1", productId: "prod_google_pro", url: "https://one.google.com/offer/pro-activate?code=PHAI-GPRO-8821A", status: "available", addedAt: new Date().toISOString(), buyerEmail: null, orderRef: null, soldAt: null },
+      { id: "lnk_2", productId: "prod_google_pro", url: "https://one.google.com/offer/pro-activate?code=PHAI-GPRO-9942B", status: "available", addedAt: new Date().toISOString(), buyerEmail: null, orderRef: null, soldAt: null },
+      { id: "lnk_3", productId: "prod_google_pro", url: "https://one.google.com/offer/pro-activate?code=PHAI-GPRO-7713C", status: "available", addedAt: new Date().toISOString(), buyerEmail: null, orderRef: null, soldAt: null },
+      { id: "lnk_4", productId: "prod_google_pro", url: "https://one.google.com/offer/pro-activate?code=PHAI-GPRO-6654D", status: "available", addedAt: new Date().toISOString(), buyerEmail: null, orderRef: null, soldAt: null },
+      { id: "lnk_5", productId: "prod_google_pro", url: "https://one.google.com/offer/pro-activate?code=PHAI-GPRO-5505E", status: "available", addedAt: new Date().toISOString(), buyerEmail: null, orderRef: null, soldAt: null }
+    ];
+
+    const INITIAL_FAQS = [
+      { id: "faq_1", q: "How fast do I receive my Google Pro activation link?", a: "Immediately! As soon as Paystack confirms your payment, our FIFO vault grabs your exact quantity of links, displays them on screen, and emails them to you." },
+      { id: "faq_2", q: "When does the activation link expire?", a: "You must use and activate your link within 12 hours of receiving it. After 12 hours, unactivated links automatically deactivate." },
+      { id: "faq_3", q: "Can I get a refund after receiving my link?", a: "No. Once payment succeeds and your unique activation link has been dispensed, no refunds or exchanges are possible." }
+    ];
+
+    const CURRENCIES = {
+      NGN: { symbol: "₦", name: "Nigerian Naira", flag: "🇳🇬", rate: 1 },
+      USD: { symbol: "$", name: "US Dollar", flag: "🇺🇸", rate: 0.00063 },
+      GBP: { symbol: "£", name: "British Pound", flag: "🇬🇧", rate: 0.00049 },
+      EUR: { symbol: "€", name: "Euro", flag: "🇪🇺", rate: 0.00058 },
+      INR: { symbol: "₹", name: "Indian Rupee", flag: "🇮🇳", rate: 0.053 },
+      GHS: { symbol: "₵", name: "Ghanaian Cedi", flag: "🇬🇭", rate: 0.0098 },
+      KES: { symbol: "KSh", name: "Kenyan Shilling", flag: "🇰🇪", rate: 0.081 },
+      ZAR: { symbol: "R", name: "South African Rand", flag: "🇿🇦", rate: 0.011 }
+    };
+
+    function App() {
+      const [settings, setSettings] = useState(() => {
+        try {
+          const saved = localStorage.getItem("ph_ai_sub_settings_v5");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            return {
+              ...INITIAL_SETTINGS,
+              ...parsed,
+              paystackPublicKey: parsed.paystackPublicKey?.startsWith("pk_live_") ? parsed.paystackPublicKey : LIVE_PAYSTACK_PUBLIC_KEY,
+              googleMailScriptUrl: parsed.googleMailScriptUrl?.includes("script.google.com") ? parsed.googleMailScriptUrl : LIVE_GOOGLE_MAIL_SCRIPT_URL
+            };
+          }
+        } catch (e) {}
+        return INITIAL_SETTINGS;
+      });
+
+      const [products, setProducts] = useState(() => {
+        try {
+          const saved = localStorage.getItem("ph_ai_sub_products_v5");
+          return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+        } catch { return INITIAL_PRODUCTS; }
+      });
+
+      const [links, setLinks] = useState(() => {
+        try {
+          const saved = localStorage.getItem("ph_ai_sub_links_v5");
+          return saved ? JSON.parse(saved) : INITIAL_LINKS;
+        } catch { return INITIAL_LINKS; }
+      });
+
+      const [orders, setOrders] = useState(() => {
+        try {
+          const saved = localStorage.getItem("ph_ai_sub_orders_v5");
+          return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+      });
+
+      const [faqs, setFaqs] = useState(() => {
+        try {
+          const saved = localStorage.getItem("ph_ai_sub_faqs_v5");
+          return saved ? JSON.parse(saved) : INITIAL_FAQS;
+        } catch { return INITIAL_FAQS; }
+      });
+
+      useEffect(() => { localStorage.setItem("ph_ai_sub_settings_v5", JSON.stringify(settings)); }, [settings]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_products_v5", JSON.stringify(products)); }, [products]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_links_v5", JSON.stringify(links)); }, [links]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_orders_v5", JSON.stringify(orders)); }, [orders]);
+      useEffect(() => { localStorage.setItem("ph_ai_sub_faqs_v5", JSON.stringify(faqs)); }, [faqs]);
+
+      const [currentRoute, setCurrentRoute] = useState("home");
+      const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+      const [adminPasswordInput, setAdminPasswordInput] = useState("");
+      const [adminActiveTab, setAdminActiveTab] = useState("vault");
+
+      const [currency, setCurrency] = useState("NGN");
+      const [rates, setRates] = useState(CURRENCIES);
+
+      const [selectedProduct, setSelectedProduct] = useState(null);
+      const [quantityInput, setQuantityInput] = useState("1");
+      const [buyerName, setBuyerName] = useState("");
+      const [buyerEmail, setBuyerEmail] = useState("");
+      const [agreedPolicy, setAgreedPolicy] = useState(true);
+      const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+      const [completedOrder, setCompletedOrder] = useState(null);
+      const [showSupportModal, setShowSupportModal] = useState(false);
+      const [showLookupModal, setShowLookupModal] = useState(false);
+      const [showUrlModal, setShowUrlModal] = useState(false);
+      const [urlInput, setUrlInput] = useState("phaisub.com/phadmin");
+
+      const [lookupEmail, setLookupEmail] = useState("");
+      const [lookupRef, setLookupRef] = useState("");
+      const [lookupResult, setLookupResult] = useState(null);
+      const [lookupError, setLookupError] = useState("");
+
+      const [toast, setToast] = useState(null);
+      const [emailDiagnosticLog, setEmailDiagnosticLog] = useState("✅ Live Google Mail Web App URL Connected & Ready.");
+
+      const [selectedVaultProduct, setSelectedVaultProduct] = useState("prod_google_pro");
+      const [bulkLinksText, setBulkLinksText] = useState("");
+      const [vaultFilter, setVaultFilter] = useState("available");
+      const [testEmailRecipient, setTestEmailRecipient] = useState("");
+
+      const showToast = (msg, type = "success") => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 4000);
+      };
+
+      useEffect(() => {
+        fetch("https://open.er-api.com/v6/latest/NGN")
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.rates) {
+              setRates((prev) => {
+                const updated = { ...prev };
+                Object.keys(updated).forEach((code) => {
+                  if (data.rates[code]) updated[code] = { ...updated[code], rate: data.rates[code] };
+                });
+                return updated;
+              });
+            }
+          })
+          .catch(() => {});
+
+        const handleKeyDown = (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "a") {
+            e.preventDefault();
+            setCurrentRoute((prev) => (prev === "phadmin" ? "home" : "phadmin"));
+          }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, []);
+
+      const stockByProduct = useMemo(() => {
+        const counts = {};
+        products.forEach((p) => { counts[p.id] = 0; });
+        links.forEach((l) => {
+          if (l.status === "available") counts[l.productId] = (counts[l.productId] || 0) + 1;
+        });
+        return counts;
+      }, [products, links]);
+
+      const formatPrice = (amountNGN) => {
+        const curr = rates[currency] || CURRENCIES.NGN;
+        const converted = amountNGN * curr.rate;
+        if (currency === "NGN") return `₦${Number(amountNGN).toLocaleString()}`;
+        return `${curr.symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      };
+
+      const parsedQuantity = useMemo(() => {
+        const num = parseInt(quantityInput, 10);
+        if (isNaN(num) || num < 1) return 1;
+        if (selectedProduct) {
+          const maxStock = stockByProduct[selectedProduct.id] || 0;
+          return Math.min(num, Math.max(1, maxStock));
+        }
+        return num;
+      }, [quantityInput, selectedProduct, stockByProduct]);
+
+      // ============================================================================
+      // AUTOMATED GOOGLE MAIL DISPATCHER
+      // ============================================================================
+      const sendActivationEmailViaGoogle = async (orderObj) => {
+        const scriptUrl = (settings.googleMailScriptUrl || LIVE_GOOGLE_MAIL_SCRIPT_URL).trim();
+        if (!scriptUrl) return false;
+
+        const linksFormattedPlain = orderObj.dispensedLinks
+          .map((u, idx) => `Link #${idx + 1}: ${u}`)
+          .join("\n");
+
+        const linksFormattedHtml = orderObj.dispensedLinks
+          .map((u, idx) => `
+            <div style="margin-bottom:12px;padding:14px;background:#12141D;border:1px solid #2e3244;border-radius:10px;">
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Activation Link #${idx + 1}</div>
+              <a href="${u}" style="color:#818cf8;font-family:monospace;font-size:14px;word-break:break-all;font-weight:bold;">${u}</a>
+            </div>`)
+          .join("");
+
+        const subject = `Your ${orderObj.productName} Activation Link(s) - ${settings.brandName} [${orderObj.reference}]`;
+        const plainTextBody = `Hello ${orderObj.buyerName || "Valued Customer"},\n\nThank you for your purchase at ${settings.brandName}!\nPayment Reference: ${orderObj.reference}\n\nYOUR ACTIVATION LINK(S) (${orderObj.quantity}x):\n----------------------------------\n${linksFormattedPlain}\n----------------------------------\n\n⚠️ ${settings.expirationInstruction}\n\nHOW TO ACTIVATE:\n${settings.activationSteps}\n\n${settings.noRefundDisclaimer}`;
+
+        const htmlBody = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#090A0F;color:#f8fafc;padding:28px;border-radius:16px;border:1px solid #1e293b;">
+            <h2 style="color:#ffffff;margin-top:0;">⚡ ${settings.brandName} — Instant Link Delivery</h2>
+            <p style="color:#cbd5e1;font-size:15px;">Hello <strong>${orderObj.buyerName || "Valued Customer"}</strong>, your payment for <strong>${orderObj.quantity}x ${orderObj.productName}</strong> is confirmed.</p>
+            <div style="background:#1e1b4b;border-left:4px solid #6366f1;padding:12px 16px;border-radius:8px;margin:18px 0;color:#e0e7ff;font-size:13px;">
+              <strong>⏳ 12-HOUR EXPIRATION NOTICE:</strong><br/>${settings.expirationInstruction}
+            </div>
+            <h3 style="color:#a5b4fc;font-size:14px;text-transform:uppercase;">Your Purchased Activation Link(s):</h3>
+            ${linksFormattedHtml}
+            <div style="margin-top:20px;padding:14px;background:#111827;border-radius:10px;font-size:13px;color:#cbd5e1;white-space:pre-line;">
+              <strong>How to Activate:</strong><br/>${settings.activationSteps}
+            </div>
+            <p style="margin-top:20px;font-size:11px;color:#64748b;border-top:1px solid #1e293b;padding-top:14px;">
+              <strong>Order Reference:</strong> ${orderObj.reference}<br/>${settings.noRefundDisclaimer}
+            </p>
+          </div>`;
+
+        try {
+          setEmailDiagnosticLog(`⏳ Sending activation link(s) to ${orderObj.buyerEmail}...`);
+          const formParams = new URLSearchParams();
+          formParams.append("to", orderObj.buyerEmail);
+          formParams.append("email", orderObj.buyerEmail);
+          formParams.append("recipient", orderObj.buyerEmail);
+          formParams.append("buyerEmail", orderObj.buyerEmail);
+          formParams.append("subject", subject);
+          formParams.append("body", plainTextBody);
+          formParams.append("textBody", plainTextBody);
+          formParams.append("message", plainTextBody);
+          formParams.append("htmlBody", htmlBody);
+          formParams.append("links", orderObj.dispensedLinks.join("\n"));
+          formParams.append("activationLinks", orderObj.dispensedLinks.join("\n"));
+          formParams.append("reference", orderObj.reference);
+
+          await fetch(scriptUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formParams.toString()
+          });
+
+          setEmailDiagnosticLog(`✅ Dispatched ${orderObj.dispensedLinks.length} link(s) to ${orderObj.buyerEmail} at ${new Date().toLocaleTimeString()}`);
+          return true;
+        } catch (err) {
+          setEmailDiagnosticLog(`❌ Email error: ${err.message}`);
+          return false;
+        }
+      };
+
+      // ============================================================================
+      // FIFO LINK DISPENSER & PAYSTACK CHECKOUT
+      // ============================================================================
+      const executeFifoLinkDispense = async (paymentReference) => {
+        if (!selectedProduct) return;
+        const qty = parsedQuantity;
+        const availableForProduct = links.filter(
+          (l) => l.productId === selectedProduct.id && l.status === "available"
+        );
+
+        if (availableForProduct.length < qty) {
+          showToast("Stock changed during checkout. Contact support with your reference.", "error");
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const pickedLinks = availableForProduct.slice(0, qty);
+        const pickedIds = new Set(pickedLinks.map((l) => l.id));
+        const soldTimestamp = new Date().toISOString();
+
+        const updatedLinks = links.map((l) =>
+          pickedIds.has(l.id)
+            ? { ...l, status: "sold", buyerEmail: buyerEmail.trim(), orderRef: paymentReference, soldAt: soldTimestamp }
+            : l
+        );
+
+        const newOrder = {
+          id: "ord_" + Date.now(),
+          reference: paymentReference,
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          quantity: qty,
+          totalNGN: selectedProduct.priceNGN * qty,
+          buyerName: buyerName.trim() || "Valued Customer",
+          buyerEmail: buyerEmail.trim(),
+          dispensedLinks: pickedLinks.map((l) => l.url),
+          createdAt: soldTimestamp
+        };
+
+        setLinks(updatedLinks);
+        setOrders((prev) => [newOrder, ...prev]);
+        setCompletedOrder(newOrder);
+        setSelectedProduct(null);
+        setIsProcessingPayment(false);
+
+        await sendActivationEmailViaGoogle(newOrder);
+        showToast(`Payment verified! ${qty} link(s) unlocked & emailed to ${newOrder.buyerEmail}`);
+      };
+
+      const handlePaystackCheckout = (e) => {
+        e.preventDefault();
+        if (!selectedProduct) return;
+        const cleanEmail = buyerEmail.trim();
+        if (!cleanEmail || !cleanEmail.includes("@")) {
+          showToast("Please enter a valid email address.", "error");
+          return;
+        }
+        if (!agreedPolicy) {
+          showToast("Please accept the 12-Hour Expiration & No-Refund Policy.", "error");
+          return;
+        }
+
+        const publicKey = (settings.paystackPublicKey || LIVE_PAYSTACK_PUBLIC_KEY).trim();
+        if (!window.PaystackPop) {
+          showToast("Paystack is loading. Try again in a moment.", "error");
+          return;
+        }
+
+        setIsProcessingPayment(true);
+        const totalNaira = selectedProduct.priceNGN * parsedQuantity;
+        const txRef = `PHAI-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        try {
+          const handler = window.PaystackPop.setup({
+            key: publicKey,
+            email: cleanEmail,
+            amount: Math.round(totalNaira * 100),
+            currency: "NGN",
+            ref: txRef,
+            callback: function (response) {
+              executeFifoLinkDispense(response.reference || txRef);
+            },
+            onClose: function () {
+              setIsProcessingPayment(false);
+              showToast("Payment window closed.", "error");
+            }
+          });
+          handler.openIframe();
+        } catch (err) {
+          setIsProcessingPayment(false);
+          showToast("Could not launch Paystack window.", "error");
+        }
+      };
+
+      const handleBulkAddLinks = (e) => {
+        e.preventDefault();
+        const rawLines = bulkLinksText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        if (rawLines.length === 0) {
+          showToast("Paste at least 1 activation link.", "error");
+          return;
+        }
+        const existingUrls = new Set(links.map((l) => l.url));
+        const newEntries = [];
+        rawLines.forEach((url, idx) => {
+          if (!existingUrls.has(url)) {
+            existingUrls.add(url);
+            newEntries.push({
+              id: `lnk_${Date.now()}_${idx}`,
+              productId: selectedVaultProduct,
+              url,
+              status: "available",
+              addedAt: new Date().toISOString(),
+              buyerEmail: null,
+              orderRef: null,
+              soldAt: null
+            });
+          }
+        });
+        setLinks((prev) => [...newEntries, ...prev]);
+        setBulkLinksText("");
+        showToast(`Added ${newEntries.length} activation link(s) to vault!`);
+      };
+
+      const handleOrderLookup = (e) => {
+        e.preventDefault();
+        setLookupError("");
+        setLookupResult(null);
+        const found = orders.find(
+          (o) =>
+            o.buyerEmail.toLowerCase() === lookupEmail.trim().toLowerCase() &&
+            (o.reference.toLowerCase() === lookupRef.trim().toLowerCase() || o.id.toLowerCase() === lookupRef.trim().toLowerCase())
+        );
+        if (!found) setLookupError("No matching order found. Check your Email and Paystack Reference.");
+        else setLookupResult(found);
+      };
+
+      // ============================================================================
+      // /PHADMIN DASHBOARD VIEW
+      // ============================================================================
+      if (currentRoute === "phadmin") {
+        if (!isAdminAuthenticated) {
+          return (
+            <div className="min-h-screen bg-[#090A0F] text-white flex items-center justify-center p-4">
+              <div className="max-w-md w-full bg-[#12141D] border border-white/10 rounded-3xl p-8 shadow-2xl">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center mb-6 text-xl">
+                  🔒
+                </div>
+                <h1 className="text-2xl font-bold mb-1">PH AI Sub • /phadmin</h1>
+                <p className="text-slate-400 text-sm mb-6">
+                  Restricted Executive Command Center. Enter master password to unlock.
+                </p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (adminPasswordInput === settings.adminPassword) {
+                      setIsAdminAuthenticated(true);
+                      setAdminPasswordInput("");
+                      showToast("Unlocked /phadmin Command Center");
+                    } else {
+                      showToast("Incorrect password (Hint: Princeh1)", "error");
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <input
+                    type="password"
+                    value={adminPasswordInput}
+                    onChange={(e) => setAdminPasswordInput(e.target.value)}
+                    placeholder="Enter master password (Princeh1)..."
+                    className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                    autoFocus
+                  />
+                  <button type="submit" className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 font-bold">
+                    Unlock /phadmin
+                  </button>
+                  <button type="button" onClick={() => setCurrentRoute("home")} className="w-full py-2 text-sm text-slate-400 hover:text-white">
+                    ← Return to Storefront
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+        }
+
+        const totalRevenueNGN = orders.reduce((acc, o) => acc + (o.totalNGN || 0), 0);
+        const totalSoldLinks = links.filter((l) => l.status === "sold").length;
+        const totalAvailableLinks = links.filter((l) => l.status === "available").length;
+
+        return (
+          <div className="min-h-screen bg-[#090A0F] text-slate-100">
+            {toast && (
+              <div className="fixed top-5 right-5 z-50 bg-indigo-600 text-white px-5 py-3 rounded-xl shadow-2xl font-semibold text-sm">
+                ✓ {toast.msg}
+              </div>
+            )}
+
+            <header className="border-b border-white/10 bg-[#12141D] sticky top-0 z-30">
+              <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <img src={settings.brandLogoUrl} alt="Logo" className="w-9 h-9 rounded-lg object-cover border border-white/15" />
+                  <div>
+                    <span className="font-bold text-lg">{settings.brandName} • /phadmin</span>
+                    <p className="text-xs text-emerald-400">Live Paystack & Google Mail Active</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setCurrentRoute("home")} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">
+                    ← Back to Live Storefront
+                  </button>
+                  <button onClick={() => { setIsAdminAuthenticated(false); setCurrentRoute("home"); }} className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-semibold">
+                    Lock Admin
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div className="max-w-7xl mx-auto px-4 py-8">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+                <div className="bg-[#12141D] border border-white/10 rounded-2xl p-5">
+                  <p className="text-xs text-slate-400 uppercase">Total Revenue</p>
+                  <p className="text-2xl font-bold mt-1 text-emerald-400">₦{totalRevenueNGN.toLocaleString()}</p>
+                </div>
+                <div className="bg-[#12141D] border border-white/10 rounded-2xl p-5">
+                  <p className="text-xs text-slate-400 uppercase">Links Available</p>
+                  <p className="text-2xl font-bold mt-1 text-indigo-400">{totalAvailableLinks}</p>
+                </div>
+                <div className="bg-[#12141D] border border-white/10 rounded-2xl p-5">
+                  <p className="text-xs text-slate-400 uppercase">Links Sold</p>
+                  <p className="text-2xl font-bold mt-1 text-white">{totalSoldLinks}</p>
+                </div>
+                <div className="bg-[#12141D] border border-white/10 rounded-2xl p-5">
+                  <p className="text-xs text-slate-400 uppercase">Paystack Key</p>
+                  <p className="text-xs font-bold mt-2 text-emerald-400">● LIVE MODE CONNECTED</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
+                {[
+                  { id: "vault", label: "1. Activation Link Vault" },
+                  { id: "products", label: "2. Products & Prices" },
+                  { id: "cms", label: "3. Website Text & Logo" },
+                  { id: "integrations", label: "4. Paystack & Google Mail API" },
+                  { id: "orders", label: `5. Orders (${orders.length})` }
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setAdminActiveTab(t.id)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+                      adminActiveTab === t.id ? "bg-indigo-600 text-white" : "bg-[#12141D] text-slate-400 border border-white/10"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {adminActiveTab === "vault" && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="bg-[#12141D] border border-white/10 rounded-2xl p-6">
+                    <h2 className="text-base font-bold mb-2">Bulk Paste Activation Links</h2>
+                    <form onSubmit={handleBulkAddLinks} className="space-y-4">
+                      <select
+                        value={selectedVaultProduct}
+                        onChange={(e) => setSelectedVaultProduct(e.target.value)}
+                        className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-3 py-2.5 text-sm"
+                      >
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} ({stockByProduct[p.id] || 0} left)</option>
+                        ))}
+                      </select>
+                      <textarea
+                        rows="6"
+                        value={bulkLinksText}
+                        onChange={(e) => setBulkLinksText(e.target.value)}
+                        placeholder={"https://one.google.com/offer/link1\nhttps://one.google.com/offer/link2"}
+                        className="w-full bg-[#090A0F] border border-white/15 rounded-xl p-3 text-xs font-mono text-indigo-300"
+                      />
+                      <button type="submit" className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm">
+                        + Upload Links to Vault
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="lg:col-span-2 bg-[#12141D] border border-white/10 rounded-2xl p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-base font-bold">Vault Inventory</h2>
+                      <div className="flex gap-2">
+                        {["available", "sold", "all"].map((f) => (
+                          <button
+                            key={f}
+                            onClick={() => setVaultFilter(f)}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold capitalize ${vaultFilter === f ? "bg-indigo-600 text-white" : "bg-white/5 text-slate-400"}`}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {links.filter((l) => (vaultFilter === "all" ? true : l.status === vaultFilter)).map((item) => (
+                        <div key={item.id} className="p-3 rounded-xl bg-[#090A0F] border border-white/10 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mr-2 ${item.status === "available" ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
+                              {item.status}
+                            </span>
+                            <p className="text-xs font-mono text-indigo-300 truncate mt-1">{item.url}</p>
+                            {item.buyerEmail && <p className="text-[11px] text-slate-400">Sold to: {item.buyerEmail}</p>}
+                          </div>
+                          <button onClick={() => setLinks((prev) => prev.filter((x) => x.id !== item.id))} className="text-xs text-rose-400 px-2 py-1 rounded bg-rose-500/10">
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {adminActiveTab === "products" && (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => {
+                      setProducts((prev) => [
+                        ...prev,
+                        {
+                          id: "prod_" + Date.now(),
+                          name: "New Subscription Product",
+                          subtitle: "Instant Digital Activation Link",
+                          priceNGN: 10000,
+                          imageUrl: "https://cdn-icons-png.flaticon.com/512/11865/11865326.png",
+                          expiryNotice: "Must be used before 12 Hours else it is deactivated.",
+                          features: ["Instant Automated Delivery", "Valid for 12 Hours"],
+                          active: true
+                        }
+                      ]);
+                      showToast("New product added!");
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 font-bold text-xs"
+                  >
+                    + Add Another Subscription Product
+                  </button>
+                  {products.map((prod, idx) => (
+                    <div key={prod.id} className="bg-[#12141D] border border-white/10 rounded-2xl p-6 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input
+                          value={prod.name}
+                          onChange={(e) => { const u = [...products]; u[idx].name = e.target.value; setProducts(u); }}
+                          className="bg-[#090A0F] border border-white/15 rounded-xl px-3 py-2 text-sm"
+                          placeholder="Product Name"
+                        />
+                        <input
+                          type="number"
+                          value={prod.priceNGN}
+                          onChange={(e) => { const u = [...products]; u[idx].priceNGN = Number(e.target.value) || 0; setProducts(u); }}
+                          className="bg-[#090A0F] border border-white/15 rounded-xl px-3 py-2 text-sm text-emerald-400 font-bold"
+                          placeholder="Price in NGN"
+                        />
+                        <input
+                          value={prod.imageUrl}
+                          onChange={(e) => { const u = [...products]; u[idx].imageUrl = e.target.value; setProducts(u); }}
+                          className="bg-[#090A0F] border border-white/15 rounded-xl px-3 py-2 text-sm"
+                          placeholder="Product Image URL"
+                        />
+                      </div>
+                      <textarea
+                        rows="3"
+                        value={(prod.features || []).join("\n")}
+                        onChange={(e) => { const u = [...products]; u[idx].features = e.target.value.split("\n"); setProducts(u); }}
+                        className="w-full bg-[#090A0F] border border-white/15 rounded-xl p-3 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {adminActiveTab === "cms" && (
+                <div className="bg-[#12141D] border border-white/10 rounded-2xl p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Brand Name</label>
+                      <input value={settings.brandName} onChange={(e) => setSettings({ ...settings, brandName: e.target.value })} className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Brand Monogram Image URL</label>
+                      <input value={settings.brandLogoUrl} onChange={(e) => setSettings({ ...settings, brandLogoUrl: e.target.value })} className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-3 py-2 text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-400 block mb-1">12-Hour Expiration Instruction</label>
+                    <textarea rows="2" value={settings.expirationInstruction} onChange={(e) => setSettings({ ...settings, expirationInstruction: e.target.value })} className="w-full bg-[#090A0F] border border-amber-500/30 rounded-xl p-3 text-sm text-amber-200" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-rose-400 block mb-1">Strict No-Refund Disclaimer</label>
+                    <textarea rows="2" value={settings.noRefundDisclaimer} onChange={(e) => setSettings({ ...settings, noRefundDisclaimer: e.target.value })} className="w-full bg-[#090A0F] border border-rose-500/30 rounded-xl p-3 text-sm text-rose-200" />
+                  </div>
+                </div>
+              )}
+
+              {adminActiveTab === "integrations" && (
+                <div className="space-y-6">
+                  <div className="bg-[#12141D] border border-emerald-500/30 rounded-2xl p-6 space-y-3">
+                    <h3 className="text-base font-bold text-emerald-400">Live Paystack Public Key (Connected)</h3>
+                    <input
+                      value={settings.paystackPublicKey}
+                      onChange={(e) => setSettings({ ...settings, paystackPublicKey: e.target.value })}
+                      className="w-full bg-[#090A0F] border border-emerald-500/40 rounded-xl px-4 py-2.5 text-sm font-mono text-emerald-300"
+                    />
+                  </div>
+                  <div className="bg-[#12141D] border border-indigo-500/30 rounded-2xl p-6 space-y-4">
+                    <h3 className="text-base font-bold text-indigo-300">Google Mail Web App URL (Connected)</h3>
+                    <input
+                      value={settings.googleMailScriptUrl}
+                      onChange={(e) => setSettings({ ...settings, googleMailScriptUrl: e.target.value })}
+                      className="w-full bg-[#090A0F] border border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm font-mono text-indigo-300"
+                    />
+                    <p className="text-xs font-mono text-emerald-400">{emailDiagnosticLog}</p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        value={testEmailRecipient}
+                        onChange={(e) => setTestEmailRecipient(e.target.value)}
+                        placeholder="Enter your email to test instant link delivery..."
+                        className="flex-1 bg-[#090A0F] border border-white/15 rounded-xl px-4 py-2.5 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!testEmailRecipient.includes("@")) return showToast("Enter a valid email", "error");
+                          await sendActivationEmailViaGoogle({
+                            reference: "TEST-" + Date.now(),
+                            productName: "Google Pro",
+                            quantity: 1,
+                            buyerName: "Admin Test",
+                            buyerEmail: testEmailRecipient.trim(),
+                            dispensedLinks: ["https://one.google.com/offer/pro-activate?code=TEST-LIVE-999"]
+                          });
+                          showToast("Test activation link sent!");
+                        }}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 font-bold text-xs"
+                      >
+                        Send Test Email Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {adminActiveTab === "orders" && (
+                <div className="bg-[#12141D] border border-white/10 rounded-2xl p-6 space-y-3">
+                  {orders.length === 0 ? <p className="text-sm text-slate-400">No orders yet.</p> : orders.map((o) => (
+                    <div key={o.id} className="p-4 rounded-xl bg-[#090A0F] border border-white/10 flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-sm">{o.buyerEmail} • <span className="text-emerald-400">₦{o.totalNGN.toLocaleString()}</span></p>
+                        <p className="text-xs font-mono text-indigo-300">{o.dispensedLinks.join(", ")}</p>
+                      </div>
+                      <button onClick={() => { sendActivationEmailViaGoogle(o); showToast("Email resent!"); }} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-bold">
+                        Resend Email
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ============================================================================
+      // CUSTOMER STOREFRONT VIEW
+      // ============================================================================
+      return (
+        <div className="min-h-screen bg-[#090A0F] text-slate-100 relative overflow-x-hidden">
+          {toast && (
+            <div className="fixed top-5 right-5 z-50 bg-indigo-600 text-white px-5 py-3 rounded-xl shadow-2xl font-semibold text-sm">
+              ✓ {toast.msg}
+            </div>
+          )}
+
+          {/* Navbar */}
+          <header className="sticky top-0 z-30 border-b border-white/10 bg-[#090A0F]/85 backdrop-blur-xl">
+            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img src={settings.brandLogoUrl} alt="Logo" className="w-10 h-10 rounded-xl object-cover border border-white/15" />
+                <span className="font-extrabold text-xl tracking-tight text-white">{settings.brandName}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="bg-[#12141D] border border-white/15 rounded-xl px-3 py-2 text-xs font-bold text-white"
+                >
+                  {Object.keys(CURRENCIES).map((c) => (
+                    <option key={c} value={c}>{CURRENCIES[c].flag} {c} ({CURRENCIES[c].symbol})</option>
+                  ))}
+                </select>
+                <button onClick={() => setShowLookupModal(true)} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">
+                  🔍 Find My Links
+                </button>
+                <button onClick={() => setShowSupportModal(true)} className="px-3.5 py-2 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
+                  💬 Support
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Hero */}
+          <section className="max-w-5xl mx-auto px-4 pt-14 pb-10 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold mb-6">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>{settings.heroBadge}</span>
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-5 bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
+              {settings.heroTitle}
+            </h1>
+            <p className="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg mb-8">
+              {settings.heroSubtitle}
+            </p>
+            <div className="max-w-3xl mx-auto bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-xs sm:text-sm font-medium">
+              ⏳ {settings.expirationInstruction}
+            </div>
+          </section>
+
+          {/* Product Grid */}
+          <section className="max-w-5xl mx-auto px-4 py-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {products.filter((p) => p.active).map((product) => {
+                const stockCount = stockByProduct[product.id] || 0;
+                const inStock = stockCount > 0;
+                return (
+                  <div
+                    key={product.id}
+                    className="group bg-[#12141D] border border-white/10 hover:border-indigo-500/60 rounded-3xl p-7 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-indigo-600/20 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 p-2.5 flex items-center justify-center">
+                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition">{product.name}</h3>
+                            <p className="text-xs text-slate-400 mt-0.5">{product.subtitle}</p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${inStock ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/15 text-rose-300"}`}>
+                          {inStock ? `● ${stockCount} in Stock` : "Out of Stock"}
+                        </span>
+                      </div>
+
+                      <div className="mb-5 p-4 rounded-2xl bg-[#090A0F] border border-white/10 flex items-baseline justify-between">
+                        <div>
+                          <span className="text-xs text-slate-400 block">Price per Activation Link</span>
+                          <span className="text-3xl font-extrabold text-white">{formatPrice(product.priceNGN)}</span>
+                        </div>
+                        {currency !== "NGN" && <span className="text-xs text-slate-400">Base: ₦{product.priceNGN.toLocaleString()}</span>}
+                      </div>
+
+                      <div className="mb-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                        ⚠️ {product.expiryNotice}
+                      </div>
+
+                      <ul className="space-y-2 mb-7">
+                        {(product.features || []).map((f, i) => (
+                          <li key={i} className="text-sm text-slate-300 flex items-center gap-2">
+                            <span className="text-indigo-400">✓</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      disabled={!inStock}
+                      onClick={() => { setSelectedProduct(product); setQuantityInput("1"); }}
+                      className={`w-full py-4 rounded-2xl font-bold text-sm transition ${
+                        inStock ? "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30" : "bg-white/5 text-slate-500"
+                      }`}
+                    >
+                      {inStock ? "Select Quantity & Buy Activation Link →" : "Out of Stock"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Disclaimer */}
+          <section className="max-w-5xl mx-auto px-4 py-8">
+            <div className="bg-[#12141D] border border-rose-500/30 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-rose-300 mb-1">🚫 Official Disclaimer & Strict No-Refund Policy</h3>
+              <p className="text-xs sm:text-sm text-slate-300">{settings.noRefundDisclaimer}</p>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="border-t border-white/10 mt-10 py-8 px-4 text-xs text-slate-500">
+            <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
+              <p>{settings.footerText}</p>
+              <button
+                onClick={() => setCurrentRoute("phadmin")}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 font-mono text-[11px]"
+              >
+                🔒 Open /phadmin
+              </button>
+            </div>
+          </footer>
+
+          {/* Checkout Modal */}
+          {selectedProduct && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-[#12141D] border border-white/15 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 max-h-[92vh] overflow-y-auto">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold">{selectedProduct.name}</h3>
+                  <button onClick={() => setSelectedProduct(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+                </div>
+
+                {/* Quantity Selector (Text Editable + Buttons) */}
+                <div className="p-4 rounded-2xl bg-[#090A0F] border border-white/10 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">Quantity of Activation Links</p>
+                    <p className="text-xs text-slate-400">Type quantity or click +/- ({stockByProduct[selectedProduct.id]} available)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setQuantityInput(String(Math.max(1, parsedQuantity - 1)))} className="w-9 h-9 rounded-xl bg-white/10 font-bold">-</button>
+                    <input
+                      type="number"
+                      min="1"
+                      max={stockByProduct[selectedProduct.id] || 1}
+                      value={quantityInput}
+                      onChange={(e) => setQuantityInput(e.target.value)}
+                      className="w-16 text-center bg-[#12141D] border border-indigo-500/40 rounded-xl py-1.5 font-bold text-white"
+                    />
+                    <button type="button" onClick={() => setQuantityInput(String(Math.min(stockByProduct[selectedProduct.id] || 1, parsedQuantity + 1)))} className="w-9 h-9 rounded-xl bg-white/10 font-bold">+</button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex justify-between items-center">
+                  <div>
+                    <span className="text-xs text-indigo-200 block">Total ({currency})</span>
+                    <span className="text-2xl font-extrabold">{formatPrice(selectedProduct.priceNGN * parsedQuantity)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-slate-400 block">Paystack Settlement</span>
+                    <span className="text-sm font-bold text-emerald-400">₦{(selectedProduct.priceNGN * parsedQuantity).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePaystackCheckout} className="space-y-4">
+                  <input
+                    type="text"
+                    required
+                    value={buyerName}
+                    onChange={(e) => setBuyerName(e.target.value)}
+                    placeholder="Your Full Name"
+                    className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-4 py-3 text-sm"
+                  />
+                  <input
+                    type="email"
+                    required
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    placeholder="Registered Email (Link will be sent here immediately)"
+                    className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-4 py-3 text-sm"
+                  />
+                  <label className="flex items-start gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={agreedPolicy} onChange={(e) => setAgreedPolicy(e.target.checked)} className="mt-1" />
+                    <span>I agree that the activation link expires after <strong>12 Hours</strong> and there is <strong>NO REFUND</strong> after link delivery.</span>
+                  </label>
+                  <button type="submit" disabled={isProcessingPayment} className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 font-bold text-sm">
+                    {isProcessingPayment ? "Launching Paystack Live..." : `Pay ${formatPrice(selectedProduct.priceNGN * parsedQuantity)} with Paystack`}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Instant Delivery Modal */}
+          {completedOrder && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-[#12141D] border border-emerald-500/40 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-5">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-bold text-emerald-400">✓ Payment Confirmed & Links Unlocked!</h3>
+                    <p className="text-xs text-slate-300">Also emailed to {completedOrder.buyerEmail}</p>
+                  </div>
+                  <button onClick={() => setCompletedOrder(null)}>✕</button>
+                </div>
+                <div className="space-y-3">
+                  {completedOrder.dispensedLinks.map((u, i) => (
+                    <div key={i} className="p-4 rounded-2xl bg-[#090A0F] border border-indigo-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-mono text-indigo-300 break-all">{u}</span>
+                      <button onClick={() => { navigator.clipboard.writeText(u); showToast("Link copied!"); }} className="px-3 py-1.5 rounded-xl bg-indigo-600 text-xs font-bold shrink-0">
+                        Copy Link
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lookup Modal */}
+          {showLookupModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-[#12141D] border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold">Find My Purchased Links</h3>
+                  <button onClick={() => setShowLookupModal(false)}>✕</button>
+                </div>
+                <form onSubmit={handleOrderLookup} className="space-y-3">
+                  <input type="email" required value={lookupEmail} onChange={(e) => setLookupEmail(e.target.value)} placeholder="Your Email Address" className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-4 py-2.5 text-sm" />
+                  <input type="text" required value={lookupRef} onChange={(e) => setLookupRef(e.target.value)} placeholder="Paystack Reference ID" className="w-full bg-[#090A0F] border border-white/15 rounded-xl px-4 py-2.5 text-sm" />
+                  <button type="submit" className="w-full py-3 rounded-xl bg-indigo-600 font-bold text-sm">Find Links</button>
+                </form>
+                {lookupError && <p className="text-xs text-rose-400">{lookupError}</p>}
+                {lookupResult && (
+                  <div className="p-3 rounded-xl bg-[#090A0F] space-y-2">
+                    {lookupResult.dispensedLinks.map((u, i) => (
+                      <div key={i} className="text-xs font-mono text-indigo-300 break-all">{u}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Support Modal */}
+          {showSupportModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-[#12141D] border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold">{settings.brandName} Support</h3>
+                  <button onClick={() => setShowSupportModal(false)}>✕</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <a href={settings.whatsappUrl} target="_blank" className="p-3 rounded-xl bg-emerald-500/20 text-emerald-300 text-center text-xs font-bold">WhatsApp Support</a>
+                  <a href={settings.telegramUrl} target="_blank" className="p-3 rounded-xl bg-sky-500/20 text-sky-300 text-center text-xs font-bold">Telegram Support</a>
+                </div>
+                <div className="space-y-2">
+                  {faqs.map((f) => (
+                    <div key={f.id} className="p-3 rounded-xl bg-[#090A0F] border border-white/10">
+                      <p className="text-xs font-bold text-white">{f.q}</p>
+                      <p className="text-xs text-slate-400 mt-1">{f.a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
